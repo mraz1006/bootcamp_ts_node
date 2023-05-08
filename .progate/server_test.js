@@ -6,9 +6,11 @@ const port = process.env.PORT ?? 54321;
 
 const SERVER_ORIGIN = `http://localhost:${port}`;
 let server;
+let closedPromise;
 describe("a server", () => {
   before(async () => {
-    server = spawn(`PORT=${port} node ./out/server.js`, { shell: true });
+    server = spawn(`PORT=${port} node ./out/server.js`, { shell: true, detached: true });
+    closedPromise = new Promise((resolve) => server.on("close", resolve));
     await new Promise((resolve) => {
       server.stdout.on("data", (data) => {
         resolve();
@@ -44,7 +46,8 @@ describe("a server", () => {
     assert.equal(response.status, 404);
     assert.equal(response.ok, false);
   });
-  after(() => {
-    server.kill();
+  after(async () => {
+    process.kill(-server.pid);
+    await closedPromise;
   });
 });
